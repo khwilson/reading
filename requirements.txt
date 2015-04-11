@@ -3,7 +3,7 @@ Flask-Login==0.2.11
 Flask==0.10.1
 requests==2.4.3
 
-twilio-python
+twilio
 
 click==3.3
 pyyaml==3.11

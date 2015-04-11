@@ -28,19 +28,53 @@ def configure_app(flask_app):
     pass
 
 
-class Config(object):
-
-    testvalue = 10
-
-    def __init__(self, from_dict=None):
+class BaseConfig(object):
+    def set_from_dict(self, from_dict=None, warn_bad_keys=True):
         if not from_dict:
             return
 
-        settable_keys = {k for k in self.__dict__.viewkeys() if not k.startswith('__')}
-        not_kept_dict = {}
-        for key, value in from_dict.viewitems():
-            if key in settable_keys:
-                self.__dict__[key] = value
+        all_keys = set(from_dict.keys())
+        dict_keys = {key for key, value in from_dict.viewitems() if isinstance(value, dict)}
+        non_dict_keys = all_keys - dict_keys
+
+        valid_names = {name for name in dir(self) if not name.startswith('__')}
+
+        not_present_key_values = []
+        invalid_key_values = []
+        for key in all_keys:
+            if key not in valid_names:
+                not_present_key_values.append((key, from_dict[key]))
+                continue
+
+            if key in dict_keys:
+                if not isinstance(getattr(self, key), BaseConfig):
+                    invalid_key_values.append((key, from_dict[key]))
+                    continue
+                not_present, invalid = getattr(self, key).set_from_dict(from_dict=from_dict[key],
+                                                                        warn_bad_keys=False)
+                if not_present:
+                    not_present_key_values.append((key, not_present))
+                if invalid:
+                    invalid_key_values.append((key, invalid))
+
             else:
-                not_kept_dict[key] = value
-        logger.warn("These config values were not used in the configuration: %s", not_kept_dict)
+                if isinstance(getattr(self, key), BaseConfig):
+                    invalid_key_values.append((key, from_dict[key]))
+                    continue
+                setattr(self, key, from_dict[key])
+
+        if warn_bad_keys:
+            _logger.warn("The following keys were not present in the config: {}".format(
+                not_present_key_values))
+            _logger.warn("The following configurations were invalid: {}".format(invalid_key_values))
+        return not_present_key_values, invalid_key_values
+
+
+class TwilioConfig(BaseConfig):
+    account = "nope"
+    token = "hahahaha"
+
+
+class Config(BaseConfig):
+
+    twilio = TwilioConfig()
