@@ -41,6 +41,7 @@ def create_tables(ctx):
 @cli.command()
 @click.pass_context
 def serve(ctx):
+    """ Start the webserver """
     from reading import web
     web.app.run(debug=ctx.obj['DEBUG'])
 
