@@ -73,8 +73,18 @@ class BaseConfig(object):
 class TwilioConfig(BaseConfig):
     account = "nope"
     token = "hahahaha"
+    from_number = "9991234567"
+
+
+class DatabaseConfig(BaseConfig):
+    scheme = 'sqlite'
+    host = 'example.db'
+    port = ''
+    user = ''
+    password = ''
 
 
 class Config(BaseConfig):
 
     twilio = TwilioConfig()
+    database = DatabaseConfig()

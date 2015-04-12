@@ -5,9 +5,11 @@ import posixpath
 
 import click
 import requests
+from sqlalchemy import create_engine
 import yaml
 
 from reading import config as cfg
+from reading.models import Base
 
 
 @click.group()
@@ -24,9 +26,16 @@ def cli(ctx, debug, config):
 
 
 @cli.command()
+@click.pass_context
 def create_tables(ctx):
     """ Drop and create database """
-    pass
+    config = cfg.get_config().database
+    if config.scheme.lower() == 'sqlite':
+        engine = create_engine('sqlite:///' + config.host)
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
+    else:
+        raise ValueError("Currently only sqlite is supported")
 
 
 @cli.command()
