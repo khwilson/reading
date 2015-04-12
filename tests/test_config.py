@@ -1,5 +1,7 @@
 import unittest
 
+import yaml
+
 from reading import config
 
 class SimpleConfig(config.BaseConfig):
@@ -47,3 +49,23 @@ class TestConfig(unittest.TestCase):
 
         self.assertFalse(not_present)
         self.assertEqual(invalid, [('simple_config', from_dict['simple_config'])])
+
+    def test_deep_config_eq(self):
+        first_cfg = DeepConfig()
+        second_cfg = DeepConfig()
+        self.assertEqual(first_cfg, second_cfg)
+        self.assertEqual(hash(first_cfg), hash(second_cfg))
+
+        first_cfg.c += 10
+        self.assertNotEqual(first_cfg, second_cfg)
+
+    def test_serialize_deserialize(self):
+        cfg = DeepConfig()
+        cfg.c = 87
+        cfg.simple_config.a = 44
+        cfg.simple_config.b = 67
+
+        unser_cfg = DeepConfig(yaml.load(config.dump_config(cfg)))
+
+        self.assertEqual(cfg, unser_cfg)
+

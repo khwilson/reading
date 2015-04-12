@@ -1,5 +1,7 @@
 import logging as _logging
 
+import yaml
+
 
 _config = None
 _logger = _logging.getLogger(__name__)
@@ -7,6 +9,44 @@ _logger = _logging.getLogger(__name__)
 
 def get_config():
     return _config
+
+
+def dump_config_to_dict(cfg=None):
+    """
+    Take a BaseConfig object and serialize it into a python dictionary.
+
+    :param BaseConfig cfg: A config object
+    :return: A dictionary version of the config
+    :rtype: dict
+    """
+    if not cfg:
+        cfg = get_config()
+
+    output = {}
+    for attrname in _data_attrnames(cfg):
+        attr = getattr(cfg, attrname)
+        if isinstance(attr, BaseConfig):
+            # Recurse until basic types appear
+            output[attrname] = dump_config(cfg=attr)
+        elif not hasattr(attr, '__call__'):
+            # Assume that there aren't terribly complex types
+            output[attrname] = attr
+
+    return output
+
+
+def dump_config(cfg=None):
+    """
+    Take a BaseConfig object and serialize it as a yaml string
+
+    :param BaseConfig cfg: A config object
+    :return: A serialized version of the config
+    :rtype: str
+    """
+    if not cfg:
+        cfg = get_config()
+
+    return yaml.dump(dump_config_to_dict(cfg=cfg))
 
 
 def set_config(from_dict):
@@ -28,7 +68,18 @@ def configure_app(flask_app):
     pass
 
 
+def _data_attrnames(obj):
+    attrnames = [attrname for attrname in dir(obj) if not attrname.startswith('__') and
+                                                  not hasattr(getattr(obj, attrname), '__call__')]
+    attrnames.sort()
+    return attrnames
+
+
 class BaseConfig(object):
+
+    def __init__(self, from_dict=None, warn_bad_keys=True):
+        self.set_from_dict(from_dict=from_dict, warn_bad_keys=warn_bad_keys)
+
     def set_from_dict(self, from_dict=None, warn_bad_keys=True):
         if not from_dict:
             return
@@ -69,11 +120,34 @@ class BaseConfig(object):
             _logger.warn("The following configurations were invalid: {}".format(invalid_key_values))
         return not_present_key_values, invalid_key_values
 
+    def __eq__(self, other):
+        if type(other) is not type(self):
+            return False
+
+        self_attrs = set(_data_attrnames(self))
+        other_attrs = set(_data_attrnames(other))
+
+        if not self_attrs == other_attrs:
+            return False
+
+        return all(getattr(self, attrname) == getattr(other, attrname) for attrname in self_attrs)
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __str__(self):
+        attrnames = _data_attrnames(self)
+        return ('[' +
+                ', '.join(attrname + '=' + str(getattr(self, attrname)) for attrname in attrnames) +
+                ']')
 
 class TwilioConfig(BaseConfig):
     account = "nope"
     token = "hahahaha"
     from_number = "9991234567"
+
+    def __init__(self, *args, **kwargs):
+        super(TwilioConfig, self).__init__(*args, **kwargs)
 
 
 class DatabaseConfig(BaseConfig):
@@ -83,8 +157,14 @@ class DatabaseConfig(BaseConfig):
     user = ''
     password = ''
 
+    def __init__(self, *args, **kwargs):
+        super(DatabaseConfig, self).__init__(*args, **kwargs)
+
 
 class Config(BaseConfig):
 
     twilio = TwilioConfig()
     database = DatabaseConfig()
+
+    def __init__(self, *args, **kwargs):
+        super(Config, self).__init__(*args, **kwargs)
