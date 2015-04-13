@@ -1,9 +1,8 @@
 language: python
 python: 2.7
 env:
-  - TOX_ENV=py27
+  - TOXENV=py27
 install:
   - pip install tox
 script:
-  - echo $TOX_ENV
-  - tox -e $TOX_ENV
+  - tox
