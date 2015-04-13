@@ -5,4 +5,5 @@ env:
 install:
   - pip install tox
 script:
+  - echo $TOX_ENV
   - tox -e $TOX_ENV
