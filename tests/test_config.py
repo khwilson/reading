@@ -68,4 +68,3 @@ class TestConfig(unittest.TestCase):
         unser_cfg = DeepConfig(yaml.load(config.dump_config(cfg)))
 
         self.assertEqual(cfg, unser_cfg)
-

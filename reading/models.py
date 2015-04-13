@@ -42,3 +42,16 @@ class User(Base):
 
     def regenerate_api_key(self):
         self.api_key = random_string(API_KEY_LENGTH)
+
+
+class Database(object):
+    """ An abstraction of a database object, in case we want to support other down the line """
+
+    def __init__(self, engine):
+        self.engine = engine
+
+    def drop_tables(self):
+        Base.metadata.drop_all(self.engine)
+
+    def create_tables(self):
+        Base.metadata.create_all(self.engine)

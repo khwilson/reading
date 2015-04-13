@@ -95,3 +95,7 @@ def send():
     else:
         render_template('send_message.html')
 
+
+@app.before_request
+def before_request():
+    g.db = controllers.database.get_database_connection()
