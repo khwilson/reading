@@ -5,6 +5,7 @@ adding various elements to the tables.
 @author Kevin Wilson - khwilson@gmail.com
 """
 import os
+import sqlite3
 import subprocess
 import tempfile
 import unittest
@@ -23,7 +24,7 @@ class TestDatabase(unittest.TestCase):
         cls.tmp_config.database.host = cls.tmpdb
         # raise ValueError
         with open(cls.tmpfile, 'w') as f:
-            f.write(config.dump_config(config))
+            f.write(config.dump_config(cls.tmp_config))
 
     @classmethod
     def tearDownClass(cls):
@@ -31,5 +32,36 @@ class TestDatabase(unittest.TestCase):
         os.unlink(cls.tmpfile)
         os.unlink(cls.tmpdb)
 
-    def test_create_tables(self):
-        subprocess.Popen(['reading', 'create_tables'])
+    def test_database(self):
+        """ Try recreating the tables, adding a couple users, and then recreating tables """
+        subprocess.check_call(['reading', '-c', self.tmpfile, 'create_tables'])
+        subprocess.check_call(['reading', '-c', self.tmpfile, 'add_user', 'khwilson@gmail.com'])
+
+        conn = sqlite3.connect(self.tmp_config.database.host)
+        curs = conn.cursor()
+        curs.execute('SELECT email, administrator FROM user')
+        users = curs.fetchall()
+
+        self.assertEqual(len(users), 1)
+        user = users[0]
+        self.assertEqual(user[0], 'khwilson@gmail.com')
+        self.assertEqual(user[1], False)
+
+        subprocess.check_call(['reading', '-c', self.tmpfile,
+                               'add_user', '--administrator', 'khwilson@yahoo.com'])
+
+        conn = sqlite3.connect(self.tmp_config.database.host)
+        curs = conn.cursor()
+        curs.execute('SELECT email, administrator FROM user')
+        users = curs.fetchall()
+
+        self.assertEqual(len(users), 2)
+        users.sort()
+        users = tuple((u[0], bool(u[1])) for u in users)
+        self.assertEqual(users, (('khwilson@gmail.com', False), ('khwilson@yahoo.com', True)))
+
+        subprocess.check_call(['reading', '-c', self.tmpfile, 'create_tables'])
+        conn = sqlite3.connect(self.tmp_config.database.host)
+        curs = conn.cursor()
+        curs.execute('SELECT COUNT(*) FROM user')
+        self.assertEqual(0, curs.fetchall()[0][0])

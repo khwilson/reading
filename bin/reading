@@ -4,12 +4,17 @@ import os
 import posixpath
 
 import click
+import logging
 import requests
 import yaml
 
 from reading import config as cfg
 from reading import controllers
 from reading.models import Base
+
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger()
 
 
 @click.group()
@@ -19,7 +24,7 @@ from reading.models import Base
 def cli(ctx, debug, config):
     if config:
         with open(config, 'r') as configfile:
-            cfg.set_config_from_dict(yaml.load(configfile))
+            cfg.set_config(yaml.load(configfile))
     else:
         cfg.set_config_from_env()
     ctx.obj = {'DEBUG': debug}
@@ -32,6 +37,14 @@ def create_tables(ctx):
     db = controllers.database.get_database_connection()
     db.drop_tables()
     db.create_tables()
+
+
+@cli.command()
+@click.argument('email', type=str)
+@click.option('--administrator/--no-administrator', default=False, help="Should user be an admin?")
+def add_user(email, administrator):
+    db = controllers.database.get_database_connection()
+    db.add_user(email, administrator, api_key=None)
 
 
 @cli.command()

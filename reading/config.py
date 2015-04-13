@@ -27,7 +27,7 @@ def dump_config_to_dict(cfg=None):
         attr = getattr(cfg, attrname)
         if isinstance(attr, BaseConfig):
             # Recurse until basic types appear
-            output[attrname] = dump_config(cfg=attr)
+            output[attrname] = dump_config_to_dict(cfg=attr)
         elif not hasattr(attr, '__call__'):
             # Assume that there aren't terribly complex types
             output[attrname] = attr
@@ -55,6 +55,7 @@ def set_config(from_dict):
 
 
 def set_config_from_env():
+    _logger.warn("Unsupported")
     global _config
     _config = Config()
 
@@ -115,9 +116,12 @@ class BaseConfig(object):
                 setattr(self, key, from_dict[key])
 
         if warn_bad_keys:
-            _logger.warn("The following keys were not present in the config: {}".format(
-                not_present_key_values))
-            _logger.warn("The following configurations were invalid: {}".format(invalid_key_values))
+            if not_present_key_values:
+                _logger.warn("The following keys were not present in the config: {}".format(
+                                not_present_key_values))
+            if invalid_key_values:
+                _logger.warn("The following configurations were invalid: {}".format(
+                                invalid_key_values))
         return not_present_key_values, invalid_key_values
 
     def __eq__(self, other):

@@ -1,6 +1,6 @@
 from sqlalchemy import Boolean, Integer, Column, UnicodeText, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, sessionmaker
 
 from .constants import API_KEY_LENGTH
 from .utils import random_string
@@ -40,18 +40,24 @@ class User(Base):
     api_key = Column(UnicodeText, unique=True)
     active = Column(Boolean, default=True, unique=False)
 
-    def regenerate_api_key(self):
-        self.api_key = random_string(API_KEY_LENGTH)
-
 
 class Database(object):
     """ An abstraction of a database object, in case we want to support other down the line """
 
     def __init__(self, engine):
         self.engine = engine
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
 
     def drop_tables(self):
         Base.metadata.drop_all(self.engine)
 
     def create_tables(self):
         Base.metadata.create_all(self.engine)
+
+    def add_user(self, email, administrator, api_key=None):
+        if not api_key:
+            api_key = random_string(API_KEY_LENGTH)
+        user = User(email=email, administrator=administrator, api_key=api_key, active=True)
+        self.session.add(user)
+        self.session.commit()
